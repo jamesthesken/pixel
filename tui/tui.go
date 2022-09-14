@@ -79,17 +79,34 @@ func StartTea() {
 	fmt.Println("Login successful")
 
 	syncer := client.Syncer.(*mautrix.DefaultSyncer)
+
+	// todo: improve timestamp parsing (it's not currently the user's local TZ), also understand when messages
+	// are synced (right now it doesnt sync new messages in real-time)
 	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
-		// fmt.Printf("<%[1]s> %[4]s (%[2]s/%[3]s)\n", evt.Sender, evt.Type.String(), evt.ID, evt.Content.AsMessage().Body)
 		msgRcv := constants.Message{
-			Time:    time.Now().Format("3:04PM"),
+			Time:    time.Unix(evt.Timestamp, 0).Format("3:04PM"),
 			Nick:    evt.Sender.String(),
 			Content: evt.Content.AsMessage().Body,
+			Channel: evt.Content.AsRoomName().Name,
 		}
 		p.Send(msgRcv)
 	})
 
-	go client.Sync()
+	// todo: sync when a user leaves a room - right now it doesn't?
+	syncer.OnEventType(event.StateRoomName, func(source mautrix.EventSource, evt *event.Event) {
+		channel := constants.Channel{
+			Name: evt.Content.AsRoomName().Name,
+		}
+		p.Send(channel)
+	})
+
+	go func() {
+		for {
+			if err := client.Sync(); err != nil {
+				fmt.Println("Sync() returned ", err)
+			}
+		}
+	}()
 
 	m.client = client
 
@@ -117,9 +134,7 @@ type Model struct {
 	list        list.Model
 	senderStyle lipgloss.Style
 	notifStyle  lipgloss.Style
-	channel     string
 	client      *mautrix.Client
-	channels    []string
 	messages    []string
 	err         error
 }
@@ -185,7 +200,7 @@ func initialModel() *Model {
 	vp.KeyMap.Down.SetEnabled(false)
 
 	// channel list
-	items := []list.Item{item("Test")}
+	items := []list.Item{}
 	const defaultWidth = 20
 
 	list := list.New(items, itemDelegate{}, defaultWidth, listHeight)

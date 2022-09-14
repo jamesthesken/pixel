@@ -6,10 +6,19 @@ package constants
 	based on which messages are received.
 */
 
+type Messages struct {
+	Channel  string
+	Messages []string
+}
+
 type Message struct {
 	Content      string
 	Nick         string
 	Channel      string
 	Time         string
 	Notification string
+}
+
+type Channel struct {
+	Name string
 }

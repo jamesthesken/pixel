@@ -12,6 +12,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var test = make(map[string][]string)
+var testMsgs []string
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		liCmd tea.Cmd
@@ -25,9 +28,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case constants.Message:
 		nick := fmt.Sprintf("< %s >", msg.Nick)
 		m.messages = append(m.messages, m.senderStyle.Render(msg.Time)+" "+m.senderStyle.Render(nick+" ")+" "+msg.Content)
-		m.setContent(strings.Join(m.messages, "\n"))
+		testMsgs = append(testMsgs, m.senderStyle.Render(msg.Time)+" "+m.senderStyle.Render(nick+" ")+" "+msg.Content)
+		// m.setContent(strings.Join(m.messages, "\n"))
+		test[msg.Channel] = m.messages
+
 		m.viewport.GotoBottom()
 
+	case constants.Channel:
+		m.list.InsertItem(-1, item(msg.Name))
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width - msg.Width/4
 		m.viewport.Height = msg.Height - msg.Height/4
@@ -48,6 +56,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.setContent(strings.Join(m.messages, "\n"))
 					m.viewport.GotoBottom()
 				}
+			} else {
+				i, ok := m.list.SelectedItem().(item)
+				if ok {
+					m.setContent(strings.Join(test[string(i)], "\n"))
+				}
+
 			}
 		}
 
@@ -57,8 +71,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	channels := channelsToItems(m.channels)
-	m.list.SetItems(channels)
+	// channels := channelsToItems(m.channels)
+	// m.list.SetItems(channels)
 
 	m.list, liCmd = m.list.Update(msg)
 	m.textarea, tiCmd = m.textarea.Update(msg)
