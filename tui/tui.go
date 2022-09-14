@@ -29,9 +29,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"pixel/tui/constants"
 	"time"
 
+	"pixel/tui/constants"
+
+	"github.com/caarlos0/env/v6"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -41,12 +43,13 @@ import (
 	"maunium.net/go/mautrix/event"
 )
 
-var homeserver = flag.String("homeserver", "", "Matrix homeserver")
-var username = flag.String("username", "", "Matrix username localpart")
-var password = flag.String("password", "", "Matrix password")
+type config struct {
+	Homeserver string `env:"HOMESERVER"`
+	Username   string `env:"USERNAME"`
+	Password   string `env:"PASSWORD"`
+}
 
 func StartTea() {
-
 	m := initialModel()
 
 	p := *tea.NewProgram(m,
@@ -54,23 +57,50 @@ func StartTea() {
 		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)
 
-	// connect to Matrix
-	flag.Parse()
-	if *username == "" || *password == "" || *homeserver == "" {
+	// Read environment variables
+	var cfg config
+	cfgOpts := env.Options{Prefix: "PIXEL_"}
+	if err := env.Parse(&cfg, cfgOpts); err != nil {
+		fmt.Println("error reading environment:", err)
+		os.Exit(1)
+	}
+
+	// Flags take priority over environment variables
+	{
+		var (
+			homeserver = flag.String("homeserver", "", "Matrix homeserver")
+			username   = flag.String("username", "", "Matrix username localpart")
+			password   = flag.String("password", "", "Matrix password")
+		)
+
+		flag.Parse()
+		if *homeserver != "" {
+			cfg.Homeserver = *homeserver
+		}
+		if *username != "" {
+			cfg.Username = *username
+		}
+		if *password != "" {
+			cfg.Password = *password
+		}
+	}
+
+	if cfg.Username == "" || cfg.Password == "" || cfg.Homeserver == "" {
 		_, _ = fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	fmt.Println("Logging into", *homeserver, "as", *username)
-	client, err := mautrix.NewClient(*homeserver, "", "")
+	// Connect to Matrix server
+	fmt.Println("Logging into", cfg.Homeserver, "as", cfg.Username)
+	client, err := mautrix.NewClient(cfg.Homeserver, "", "")
 	if err != nil {
 		panic(err)
 	}
 	_, err = client.Login(&mautrix.ReqLogin{
 		Type:             "m.login.password",
-		Identifier:       mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: *username},
-		Password:         *password,
+		Identifier:       mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: cfg.Username},
+		Password:         cfg.Password,
 		StoreCredentials: true,
 	})
 	if err != nil {
@@ -98,10 +128,12 @@ func StartTea() {
 	}
 }
 
-type errMsg error
-type item string
-type itemDelegate struct{}
-type mode int
+type (
+	errMsg       error
+	item         string
+	itemDelegate struct{}
+	mode         int
+)
 
 func (i item) FilterValue() string { return "" }
 
@@ -156,7 +188,6 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 func initialModel() *Model {
-
 	// text area
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
