@@ -19,6 +19,7 @@ type Message struct {
 	Notification string
 }
 
-type Channel struct {
+type Room struct {
 	Name string
+	Id   string
 }

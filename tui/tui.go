@@ -17,12 +17,6 @@
 
 package tui
 
-/*
-TODO:
-- Set viewport content based on selected channel in list
-- Set message target based on selected channel in list
-*/
-
 import (
 	"flag"
 	"fmt"
@@ -41,13 +35,45 @@ import (
 	"maunium.net/go/mautrix/event"
 )
 
+type errMsg error
+type item string
+type itemDelegate struct{}
+type mode int
+
+type Model struct {
+	mode        mode
+	viewport    viewport.Model
+	textarea    textarea.Model
+	list        list.Model
+	senderStyle lipgloss.Style
+	notifStyle  lipgloss.Style
+	client      *mautrix.Client
+	msgMap      map[string][]string
+	rooms       map[string]string
+	messages    []string
+	err         error
+}
+
 var homeserver = flag.String("homeserver", "", "Matrix homeserver")
 var username = flag.String("username", "", "Matrix username localpart")
 var password = flag.String("password", "", "Matrix password")
 
+var (
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
+const listHeight = 14
+
 func StartTea() {
 
 	m := initialModel()
+
+	m.msgMap = make(map[string][]string)
+	m.rooms = make(map[string]string)
 
 	p := *tea.NewProgram(m,
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
@@ -80,23 +106,31 @@ func StartTea() {
 
 	syncer := client.Syncer.(*mautrix.DefaultSyncer)
 
-	// todo: improve timestamp parsing (it's not currently the user's local TZ), also understand when messages
-	// are synced (right now it doesnt sync new messages in real-time)
+	/*
+		todo:
+			improve timestamp parsing (it's not currently the user's local TZ)
+			understand how message syncing works. currently on start up, sometimes the most recent message is not received.
+	*/
 	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
 		msgRcv := constants.Message{
 			Time:    time.Unix(evt.Timestamp, 0).Format("3:04PM"),
 			Nick:    evt.Sender.String(),
 			Content: evt.Content.AsMessage().Body,
-			Channel: evt.Content.AsRoomName().Name,
+			Channel: string(evt.Content.AsCanonicalAlias().Alias),
 		}
+
+		// this could definitely be improved! this maps a slice of messages in a room to their respective RoomID.
+		m.msgMap[evt.RoomID.String()] = append(m.msgMap[evt.RoomID.String()], m.senderStyle.Render(msgRcv.Time)+" "+m.senderStyle.Render(msgRcv.Nick+" ")+" "+msgRcv.Content)
 		p.Send(msgRcv)
 	})
 
-	// todo: sync when a user leaves a room - right now it doesn't?
+	// todo: update the ui when a user leaves the room
 	syncer.OnEventType(event.StateRoomName, func(source mautrix.EventSource, evt *event.Event) {
-		channel := constants.Channel{
+		channel := constants.Room{
 			Name: evt.Content.AsRoomName().Name,
+			Id:   evt.RoomID.String(),
 		}
+		m.rooms[evt.Content.AsRoomName().Name] = evt.RoomID.String()
 		p.Send(channel)
 	})
 
@@ -115,39 +149,7 @@ func StartTea() {
 	}
 }
 
-type errMsg error
-type item string
-type itemDelegate struct{}
-type mode int
-
 func (i item) FilterValue() string { return "" }
-
-const (
-	nav mode = iota
-	msgMode
-)
-
-type Model struct {
-	mode        mode
-	viewport    viewport.Model
-	textarea    textarea.Model
-	list        list.Model
-	senderStyle lipgloss.Style
-	notifStyle  lipgloss.Style
-	client      *mautrix.Client
-	messages    []string
-	err         error
-}
-
-const listHeight = 14
-
-var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-)
 
 func (d itemDelegate) Height() int                               { return 1 }
 func (d itemDelegate) Spacing() int                              { return 0 }
@@ -170,6 +172,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprintf(w, fn(str))
 }
 
+// initialModel sets the defaults for each Bubble Tea component and constructs the model
 func initialModel() *Model {
 
 	// text area
@@ -190,7 +193,6 @@ func initialModel() *Model {
 
 	// viewport
 	vp := viewport.New(5, 2)
-	vp.SetContent(`Welcome to Matrix!`)
 	// TODO - apply a new list of keybindings ...
 	vp.KeyMap.PageDown.SetEnabled(false)
 	vp.KeyMap.PageUp.SetEnabled(false)
