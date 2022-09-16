@@ -17,12 +17,6 @@
 
 package tui
 
-/*
-TODO:
-- Set viewport content based on selected channel in list
-- Set message target based on selected channel in list
-*/
-
 import (
 	"flag"
 	"fmt"
@@ -49,8 +43,35 @@ type config struct {
 	Password   string `env:"PASSWORD"`
 }
 
+var (
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
+const listHeight = 14
+
+type Model struct {
+	mode        mode
+	viewport    viewport.Model
+	textarea    textarea.Model
+	list        list.Model
+	senderStyle lipgloss.Style
+	notifStyle  lipgloss.Style
+	client      *mautrix.Client
+	msgMap      map[string][]string
+	rooms       map[string]string
+	messages    []string
+	err         error
+}
+
 func StartTea() {
 	m := initialModel()
+
+	m.msgMap = make(map[string][]string)
+	m.rooms = make(map[string]string)
 
 	p := *tea.NewProgram(m,
 		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
@@ -109,17 +130,42 @@ func StartTea() {
 	fmt.Println("Login successful")
 
 	syncer := client.Syncer.(*mautrix.DefaultSyncer)
+
+	/*
+		todo:
+			improve timestamp parsing (it's not currently the user's local TZ)
+			understand how message syncing works. currently on start up, sometimes the most recent message is not received.
+	*/
 	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
-		// fmt.Printf("<%[1]s> %[4]s (%[2]s/%[3]s)\n", evt.Sender, evt.Type.String(), evt.ID, evt.Content.AsMessage().Body)
 		msgRcv := constants.Message{
-			Time:    time.Now().Format("3:04PM"),
+			Time:    time.Unix(evt.Timestamp, 0).Format("3:04PM"),
 			Nick:    evt.Sender.String(),
 			Content: evt.Content.AsMessage().Body,
+			Channel: string(evt.Content.AsCanonicalAlias().Alias),
 		}
+
+		// this could definitely be improved! this maps a slice of messages in a room to their respective RoomID.
+		m.msgMap[evt.RoomID.String()] = append(m.msgMap[evt.RoomID.String()], m.senderStyle.Render(msgRcv.Time)+" "+m.senderStyle.Render(msgRcv.Nick+" ")+" "+msgRcv.Content)
 		p.Send(msgRcv)
 	})
 
-	go client.Sync()
+	// todo: update the ui when a user leaves the room
+	syncer.OnEventType(event.StateRoomName, func(source mautrix.EventSource, evt *event.Event) {
+		channel := constants.Room{
+			Name: evt.Content.AsRoomName().Name,
+			Id:   evt.RoomID.String(),
+		}
+		m.rooms[evt.Content.AsRoomName().Name] = evt.RoomID.String()
+		p.Send(channel)
+	})
+
+	go func() {
+		for {
+			if err := client.Sync(); err != nil {
+				fmt.Println("Sync() returned ", err)
+			}
+		}
+	}()
 
 	m.client = client
 
@@ -136,35 +182,6 @@ type (
 )
 
 func (i item) FilterValue() string { return "" }
-
-const (
-	nav mode = iota
-	msgMode
-)
-
-type Model struct {
-	mode        mode
-	viewport    viewport.Model
-	textarea    textarea.Model
-	list        list.Model
-	senderStyle lipgloss.Style
-	notifStyle  lipgloss.Style
-	channel     string
-	client      *mautrix.Client
-	channels    []string
-	messages    []string
-	err         error
-}
-
-const listHeight = 14
-
-var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-)
 
 func (d itemDelegate) Height() int                               { return 1 }
 func (d itemDelegate) Spacing() int                              { return 0 }
@@ -187,6 +204,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprintf(w, fn(str))
 }
 
+// initialModel sets the defaults for each Bubble Tea component and constructs the model
 func initialModel() *Model {
 	// text area
 	ta := textarea.New()
@@ -206,7 +224,6 @@ func initialModel() *Model {
 
 	// viewport
 	vp := viewport.New(5, 2)
-	vp.SetContent(`Welcome to Matrix!`)
 	// TODO - apply a new list of keybindings ...
 	vp.KeyMap.PageDown.SetEnabled(false)
 	vp.KeyMap.PageUp.SetEnabled(false)
@@ -216,7 +233,7 @@ func initialModel() *Model {
 	vp.KeyMap.Down.SetEnabled(false)
 
 	// channel list
-	items := []list.Item{item("Test")}
+	items := []list.Item{}
 	const defaultWidth = 20
 
 	list := list.New(items, itemDelegate{}, defaultWidth, listHeight)
