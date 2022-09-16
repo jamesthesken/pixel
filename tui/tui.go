@@ -53,6 +53,20 @@ var (
 
 const listHeight = 14
 
+type Model struct {
+	mode        mode
+	viewport    viewport.Model
+	textarea    textarea.Model
+	list        list.Model
+	senderStyle lipgloss.Style
+	notifStyle  lipgloss.Style
+	client      *mautrix.Client
+	msgMap      map[string][]string
+	rooms       map[string]string
+	messages    []string
+	err         error
+}
+
 func StartTea() {
 	m := initialModel()
 
