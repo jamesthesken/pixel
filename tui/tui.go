@@ -239,6 +239,8 @@ func initialModel() *Model {
 	list := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	list.SetFilteringEnabled(false)
 	list.DisableQuitKeybindings()
+	list.KeyMap.CursorUp.SetKeys("up")
+	list.KeyMap.CursorDown.SetKeys("down")
 	list.Title = "Rooms"
 	list.SetStatusBarItemName("Room", "Rooms")
 

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"pixel/tui/constants"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"maunium.net/go/mautrix/id"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -39,11 +39,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, constants.Keymap.Enter):
 			if m.textarea.Focused() {
 				if m.textarea.Value() != "" {
-					timeStamp := time.Now()
-					m.messages = append(m.messages, m.senderStyle.Render(timeStamp.Format("3:04PM"+" < You > "))+m.textarea.Value())
-					m.textarea.Reset()
-					m.setContent(strings.Join(m.messages, "\n"))
-					m.viewport.GotoBottom()
+					// get selected room from the list
+					i, _ := m.list.SelectedItem().(item)
+					// send text, there's other options too for later
+					m.client.SendText(id.RoomID(m.rooms[string(i)]), m.textarea.Value())
 				}
 			} else {
 				m.updateViewport()
