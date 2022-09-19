@@ -221,6 +221,8 @@ func initialModel() *Model {
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.ShowLineNumbers = false
 	ta.KeyMap.InsertNewline.SetEnabled(false)
+	// start with the text area disabled
+	ta.Blur()
 
 	// viewport
 	vp := viewport.New(5, 2)
@@ -241,6 +243,7 @@ func initialModel() *Model {
 	list.DisableQuitKeybindings()
 	list.KeyMap.CursorUp.SetKeys("up")
 	list.KeyMap.CursorDown.SetKeys("down")
+
 	list.Title = "Rooms"
 	list.SetStatusBarItemName("Room", "Rooms")
 

@@ -18,8 +18,9 @@ var ErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#bd534b")).Render
 var AlertStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Render
 
 type keymap struct {
-	Enter key.Binding
-	Tab   key.Binding
+	Enter   key.Binding
+	Tab     key.Binding
+	ListNav key.Binding
 }
 
 // Keymap reusable key mappings shared across models
@@ -31,5 +32,9 @@ var Keymap = keymap{
 	Tab: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "navigate"),
+	),
+	ListNav: key.NewBinding(
+		key.WithKeys("up", "down"),
+		key.WithHelp("↑/↓", "rooms"),
 	),
 }

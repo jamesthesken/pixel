@@ -36,16 +36,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, constants.Keymap.Tab):
 			m.toggleBox()
+		case key.Matches(msg, constants.Keymap.ListNav):
+			if !m.textarea.Focused() {
+				m.updateViewport()
+			}
+
 		case key.Matches(msg, constants.Keymap.Enter):
 			if m.textarea.Focused() {
 				if m.textarea.Value() != "" {
 					// get selected room from the list
 					i, _ := m.list.SelectedItem().(item)
-					// send text, there's other options too for later
+					// send text, there's other options too for later (i.e., images)
 					m.client.SendText(id.RoomID(m.rooms[string(i)]), m.textarea.Value())
+					m.textarea.SetValue("")
 				}
-			} else {
-				m.updateViewport()
 			}
 		}
 
@@ -73,16 +77,26 @@ func (m *Model) toggleBox() {
 	m.mode = (m.mode + 1) % 2
 	if m.mode == 0 {
 		m.textarea.Blur()
+		m.list.KeyMap.CursorUp.SetEnabled(true)
+		m.list.KeyMap.CursorDown.SetEnabled(true)
 	} else {
 		m.textarea.Focus()
+		m.list.KeyMap.CursorUp.SetEnabled(false)
+		m.list.KeyMap.CursorDown.SetEnabled(false)
 	}
 }
 
 // updateViewport sets the displayed messages based on which room is selected.
 func (m *Model) updateViewport() {
-	i, ok := m.list.SelectedItem().(item)
-	if ok {
-		roomId := m.rooms[string(i)]
+
+	if len(m.list.Items()) > 0 {
+
+		idx := m.list.Cursor()
+		fmt.Print(idx)
+		rooms := m.list.Items()
+		id := rooms[idx].(item)
+
+		roomId := m.rooms[string(id)]
 		m.setContent(strings.Join(m.msgMap[roomId], "\n"))
 		m.viewport.GotoBottom()
 	}
