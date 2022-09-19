@@ -36,6 +36,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, constants.Keymap.Tab):
 			m.toggleBox()
+
+		// bug -> when the user is selecting a room, the messages in the viewport do not correspond with the selection.
+		// it's like this message only fires when you hit the arrow key twice
 		case key.Matches(msg, constants.Keymap.ListNav):
 			if !m.textarea.Focused() {
 				m.updateViewport()
@@ -88,15 +91,15 @@ func (m *Model) toggleBox() {
 
 // updateViewport sets the displayed messages based on which room is selected.
 func (m *Model) updateViewport() {
-
 	if len(m.list.Items()) > 0 {
 
+		// get the current position of the cursuor and use that to access the message map
 		idx := m.list.Cursor()
-		fmt.Print(idx)
 		rooms := m.list.Items()
 		id := rooms[idx].(item)
-
 		roomId := m.rooms[string(id)]
+
+		// set content based on selected room
 		m.setContent(strings.Join(m.msgMap[roomId], "\n"))
 		m.viewport.GotoBottom()
 	}
