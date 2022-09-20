@@ -36,11 +36,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, constants.Keymap.Tab):
 			m.toggleBox()
-
-		// bug -> when the user is selecting a room, the messages in the viewport do not correspond with the selection.
-		// it's like this message only fires when you hit the arrow key twice
 		case key.Matches(msg, constants.Keymap.ListNav):
 			if !m.textarea.Focused() {
+				// prevents having to press the arrow key twice for updates
+				if msg.String() == "down" {
+					m.list.CursorDown()
+				}
+				if msg.String() == "up" {
+					m.list.CursorUp()
+				}
 				m.updateViewport()
 			}
 
