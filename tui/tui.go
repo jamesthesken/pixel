@@ -133,12 +133,11 @@ func StartTea() {
 
 	/*
 		todo:
-			improve timestamp parsing (it's not currently the user's local TZ)
 			understand how message syncing works. currently on start up, sometimes the most recent message is not received.
 	*/
 	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
 		msgRcv := constants.Message{
-			Time:    time.Unix(evt.Timestamp, 0).Format("3:04PM"),
+			Time:    time.Unix(evt.Timestamp/1000, evt.Timestamp%1000*1000).Format("3:04PM"),
 			Nick:    evt.Sender.String(),
 			Content: evt.Content.AsMessage().Body,
 			Channel: string(evt.Content.AsCanonicalAlias().Alias),
