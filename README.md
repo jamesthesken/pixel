@@ -20,9 +20,16 @@ go build
 ```
 
 ## Usage
-Pixel can't do much yet, currently it is read-only. 
 
-To navigate between rooms, press `tab` then `enter` on the room you want to see messages for.
+| Key                   | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| <kbd>tab</kbd>        | Navigate between text input and room list                  |
+| <kbd>down</kbd>       | Move up in the list of rooms                               |
+| <kbd>up</kbd>         | Move down in the list of rooms                             |
+| <kbd>enter</kbd>      | Send message to currently selected room                 |
+
+
+
 
 ## Contributing
 You'll notice this project can't do much yet! If you want to contribute please feel free to start an issue or pull request.
