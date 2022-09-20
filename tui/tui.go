@@ -243,6 +243,10 @@ func initialModel() *Model {
 	list.DisableQuitKeybindings()
 	list.KeyMap.CursorUp.SetKeys("up")
 	list.KeyMap.CursorDown.SetKeys("down")
+	// disable these keys ("g" and "G") while the list is inactive - it interferes with typing otherwise
+	list.KeyMap.GoToStart.SetEnabled(false)
+	list.KeyMap.GoToEnd.SetEnabled(false)
+	list.KeyMap.Filter.SetEnabled(false)
 
 	list.Title = "Rooms"
 	list.SetStatusBarItemName("Room", "Rooms")

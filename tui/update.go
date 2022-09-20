@@ -84,12 +84,10 @@ func (m *Model) toggleBox() {
 	m.mode = (m.mode + 1) % 2
 	if m.mode == 0 {
 		m.textarea.Blur()
-		m.list.KeyMap.CursorUp.SetEnabled(true)
-		m.list.KeyMap.CursorDown.SetEnabled(true)
+		m.setListEnabled(true)
 	} else {
 		m.textarea.Focus()
-		m.list.KeyMap.CursorUp.SetEnabled(false)
-		m.list.KeyMap.CursorDown.SetEnabled(false)
+		m.setListEnabled(false)
 	}
 }
 
@@ -107,4 +105,12 @@ func (m *Model) updateViewport() {
 		m.setContent(strings.Join(m.msgMap[roomId], "\n"))
 		m.viewport.GotoBottom()
 	}
+}
+
+// setListEnabled enables/disables the list components key bindings
+func (m *Model) setListEnabled(v bool) {
+	m.list.KeyMap.CursorUp.SetEnabled(v)
+	m.list.KeyMap.CursorDown.SetEnabled(v)
+	m.list.KeyMap.GoToEnd.SetEnabled(v)
+	m.list.KeyMap.GoToStart.SetEnabled(v)
 }
