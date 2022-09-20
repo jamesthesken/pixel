@@ -144,6 +144,7 @@ func StartTea() {
 		}
 
 		// this could definitely be improved! this maps a slice of messages in a room to their respective RoomID.
+		// look into boltDB
 		m.msgMap[evt.RoomID.String()] = append(m.msgMap[evt.RoomID.String()], m.senderStyle.Render(msgRcv.Time)+" "+m.senderStyle.Render(msgRcv.Nick+" ")+" "+msgRcv.Content)
 		p.Send(msgRcv)
 	})

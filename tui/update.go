@@ -39,13 +39,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, constants.Keymap.ListNav):
 			if !m.textarea.Focused() {
 				// prevents having to press the arrow key twice for updates
+				// really hacky -__-
 				if msg.String() == "down" {
 					m.list.CursorDown()
+					m.updateViewport()
+					m.list.CursorUp()
 				}
 				if msg.String() == "up" {
 					m.list.CursorUp()
+					m.updateViewport()
+					m.list.CursorDown()
 				}
-				m.updateViewport()
+
 			}
 
 		case key.Matches(msg, constants.Keymap.Enter):
