@@ -90,9 +90,11 @@ func (m *Model) toggleBox() {
 	if m.mode == 0 {
 		m.textarea.Blur()
 		m.setListEnabled(true)
+		m.setBorderColor(lipgloss.AdaptiveColor{Dark: "#F25D94", Light: "#F25D94"})
 	} else {
 		m.textarea.Focus()
 		m.setListEnabled(false)
+		m.setBorderColor(lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"})
 	}
 }
 

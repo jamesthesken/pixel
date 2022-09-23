@@ -60,6 +60,7 @@ type Model struct {
 	list        list.Model
 	senderStyle lipgloss.Style
 	notifStyle  lipgloss.Style
+	borderColor lipgloss.AdaptiveColor
 	client      *mautrix.Client
 	msgMap      map[string][]string
 	rooms       map[string]string
